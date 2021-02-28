@@ -266,6 +266,19 @@ impl MipsComputer {
     }
 }
 
+fn help() {
+    print!("----------------MIPS ISIM Help------------------------\n");
+    print!("go                    - run program to completion     \n");
+    print!("run n                 - execute program for n instrs  \n");
+    print!("mdump low high        - dump memory from low to high  \n");
+    print!("rdump                 - dump the register & bus value \n");
+    print!("input reg_num reg_val - set GPR reg_num to reg_val    \n");
+    print!("high value            - set the HI register to value  \n");
+    print!("low value             - set the LO register to value  \n");
+    print!("?                     - display this help menu        \n");
+    print!("quit                  - exit the program              \n\n");
+}
+
 pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
     print!("MIPS-SIM> ");
     io::stdout().flush()?;
@@ -276,7 +289,75 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
     }
     println!("");
 
-    match buf.chars().nth(0) {
+    let parts: Vec<&str> = buf.split(" ").collect();
+    match parts[0] {
+        "go" => comp.go(),
+        "mdump" => {
+            let start: usize = match parts[1].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            let end: usize = match parts[2].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            comp.mdump(start, end, dump_file)?;
+        }
+        "?" => help(),
+        "quit" => {
+            println!("Bye.");
+            exit(0);
+        }
+        "rdump" => comp.rdump(dump_file)?,
+        "run" => {
+            let cycles: u32 = match parts[1].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            comp.run(cycles);
+        }
+        "input" => {
+            let register_no: usize = match parts[1].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            let register_value: u32 = match parts[2].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            comp.curr_state.regs[register_no] = register_value;
+            comp.next_state.regs[register_no] = register_value;
+        }
+        "high" => {
+            let high_reg_val: u32 = match parts[1].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            comp.curr_state.hi = high_reg_val;
+            comp.next_state.hi = high_reg_val;
+        }
+        "low" => {
+            let low_reg_val: u32 = match parts[1].parse() {
+                Ok(val) => val,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
+                }
+            };
+            comp.curr_state.lo = low_reg_val;
+            comp.next_state.lo = low_reg_val;
+        }
         _ => println!("Invalid Command"),
     }
     Ok(())
