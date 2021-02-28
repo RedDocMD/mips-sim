@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
+use std::process::exit;
 
 pub const MIPS_REGS: usize = 32;
 
@@ -43,7 +44,7 @@ impl MemRegion {
         Self {
             start,
             size,
-            mem: Vec::with_capacity(size),
+            mem: vec![0; size],
         }
     }
 
@@ -263,4 +264,20 @@ impl MipsComputer {
         self.rdump_intern(file)?;
         Ok(())
     }
+}
+
+pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
+    print!("MIPS-SIM> ");
+    io::stdout().flush()?;
+    let mut buf = String::new();
+    let bytes = io::stdin().read_line(&mut buf)?;
+    if bytes == 0 {
+        exit(0);
+    }
+    println!("");
+
+    match buf.chars().nth(0) {
+        _ => println!("Invalid Command"),
+    }
+    Ok(())
 }
