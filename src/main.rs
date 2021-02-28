@@ -1,4 +1,5 @@
 use mips_sim::shell::*;
+use mips_sim::sim::*;
 use std::env;
 use std::fs::File;
 use std::io;
