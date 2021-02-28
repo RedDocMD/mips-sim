@@ -14,6 +14,8 @@ fn main() -> io::Result<()> {
     let mut comp = MipsComputer::new(&args[1..])?;
     let mut dump_file = File::create("dumpsim").expect("Can't open dumpsim file");
     loop {
-        prompt(&mut comp, &mut dump_file)?;
+        if let Err(e) = prompt(&mut comp, &mut dump_file) {
+            println!("Error: {}", e);
+        }
     }
 }

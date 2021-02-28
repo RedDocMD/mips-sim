@@ -285,8 +285,10 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
     let mut buf = String::new();
     let bytes = io::stdin().read_line(&mut buf)?;
     if bytes == 0 {
+        println!("Bye.");
         exit(0);
     }
+    buf = buf.trim_end().to_string();
     println!("");
 
     let parts: Vec<&str> = buf.split(" ").collect();
