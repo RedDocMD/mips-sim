@@ -13,6 +13,25 @@ struct MemRegion {
     mem: Vec<u8>,
 }
 
+struct MipsComputer {
+    curr_state: CpuState,
+    next_state: CpuState,
+    run_bit: bool,
+    instr_cnt: i32,
+    memory: [MemRegion; 5],
+}
+
+impl CpuState {
+    fn new() -> Self {
+        Self {
+            PC: 0,
+            REGS: [0; MIPS_REGS],
+            HI: 0,
+            LO: 0,
+        }
+    }
+}
+
 impl MemRegion {
     fn new(start: usize, size: usize) -> Self {
         Self {
@@ -49,6 +68,35 @@ impl MemRegion {
             self.mem[offset + 1] = (value >> 8) as u8;
             self.mem[offset] = value as u8;
             return true;
+        }
+    }
+}
+
+pub const MEM_DATA_START: usize = 0x10000000;
+pub const MEM_DATA_SIZE: usize = 0x00100000;
+pub const MEM_TEXT_START: usize = 0x00400000;
+pub const MEM_TEXT_SIZE: usize = 0x00100000;
+pub const MEM_STACK_START: usize = 0x7ff00000;
+pub const MEM_STACK_SIZE: usize = 0x00100000;
+pub const MEM_KDATA_START: usize = 0x90000000;
+pub const MEM_KDATA_SIZE: usize = 0x00100000;
+pub const MEM_KTEXT_START: usize = 0x80000000;
+pub const MEM_KTEXT_SIZE: usize = 0x00100000;
+
+impl MipsComputer {
+    fn new() -> Self {
+        Self {
+            curr_state: CpuState::new(),
+            next_state: CpuState::new(),
+            run_bit: true,
+            instr_cnt: 0,
+            memory: [
+                MemRegion::new(MEM_DATA_START, MEM_DATA_SIZE),
+                MemRegion::new(MEM_TEXT_START, MEM_TEXT_SIZE),
+                MemRegion::new(MEM_STACK_START, MEM_STACK_SIZE),
+                MemRegion::new(MEM_KDATA_START, MEM_KDATA_SIZE),
+                MemRegion::new(MEM_KTEXT_START, MEM_KTEXT_SIZE),
+            ],
         }
     }
 }
