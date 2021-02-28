@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
+use std::path::Path;
 
 pub const MIPS_REGS: usize = 32;
 
@@ -75,6 +76,19 @@ impl MemRegion {
             return true;
         }
     }
+
+    // Bytes must be in little-endian order (LSB at lowest address)
+    fn write_bytes(&mut self, address: usize, bytes: &[u8]) -> bool {
+        if !self.contains_address(address) {
+            return false;
+        } else {
+            let offset = address - self.start;
+            for (idx, byte) in bytes.iter().enumerate() {
+                self.mem[offset + idx] = *byte;
+            }
+            return true;
+        }
+    }
 }
 
 pub const MEM_DATA_START: usize = 0x10000000;
@@ -89,8 +103,8 @@ pub const MEM_KTEXT_START: usize = 0x80000000;
 pub const MEM_KTEXT_SIZE: usize = 0x00100000;
 
 impl MipsComputer {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(filenames: &[String]) -> io::Result<Self> {
+        let mut comp = Self {
             curr_state: CpuState::new(),
             next_state: CpuState::new(),
             run_bit: true,
@@ -102,7 +116,38 @@ impl MipsComputer {
                 MemRegion::new(MEM_KDATA_START, MEM_KDATA_SIZE),
                 MemRegion::new(MEM_KTEXT_START, MEM_KTEXT_SIZE),
             ],
+        };
+        for filename in filenames.iter() {
+            comp.load_program(filename)?;
         }
+        comp.next_state = comp.curr_state;
+        Ok(comp)
+    }
+
+    fn load_program<T: AsRef<Path>>(&mut self, path: T) -> io::Result<()> {
+        let mut file = File::open(&path).expect(&format!(
+            "Cannot open program file {}",
+            path.as_ref().display()
+        ));
+        let mut buf = [0 as u8; 4];
+        let mut off = 0;
+        loop {
+            buf.fill(0);
+            let bytes_read = file.read(&mut buf)?;
+            if bytes_read == 0 {
+                // EOF
+                break;
+            }
+            if bytes_read < 4 {
+                buf.rotate_left(bytes_read);
+            }
+            buf.reverse(); // Big-endian to little-endian
+            self.mem_write_bytes(MEM_TEXT_START + off, &buf);
+            off += 4;
+        }
+        self.curr_state.pc = MEM_TEXT_START as u32;
+        println!("Read {} words from program into memory.\n", off / 4);
+        Ok(())
     }
 
     fn mem_read_32(&self, address: usize) -> Option<u32> {
@@ -117,6 +162,15 @@ impl MipsComputer {
     fn mem_write_32(&mut self, address: usize, value: u32) -> bool {
         for mem_reg in &mut self.memory {
             if mem_reg.write_32(address, value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn mem_write_bytes(&mut self, address: usize, bytes: &[u8]) -> bool {
+        for mem_reg in &mut self.memory {
+            if mem_reg.write_bytes(address, bytes) {
                 return true;
             }
         }
