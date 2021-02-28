@@ -295,6 +295,12 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
     match parts[0] {
         "go" => comp.go(),
         "mdump" => {
+            if parts.len() < 3 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "mdump requires 2 params",
+                ));
+            }
             let start: usize = match parts[1].parse() {
                 Ok(val) => val,
                 Err(e) => {
@@ -316,6 +322,12 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
         }
         "rdump" => comp.rdump(dump_file)?,
         "run" => {
+            if parts.len() < 3 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "run requires 1 param",
+                ));
+            }
             let cycles: u32 = match parts[1].parse() {
                 Ok(val) => val,
                 Err(e) => {
@@ -325,6 +337,12 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
             comp.run(cycles);
         }
         "input" => {
+            if parts.len() < 3 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "input requires 2 params",
+                ));
+            }
             let register_no: usize = match parts[1].parse() {
                 Ok(val) => val,
                 Err(e) => {
@@ -341,6 +359,12 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
             comp.next_state.regs[register_no] = register_value;
         }
         "high" => {
+            if parts.len() < 3 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "high requires 1 param",
+                ));
+            }
             let high_reg_val: u32 = match parts[1].parse() {
                 Ok(val) => val,
                 Err(e) => {
@@ -351,6 +375,12 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
             comp.next_state.hi = high_reg_val;
         }
         "low" => {
+            if parts.len() < 3 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "low requires 1 param",
+                ));
+            }
             let low_reg_val: u32 = match parts[1].parse() {
                 Ok(val) => val,
                 Err(e) => {
