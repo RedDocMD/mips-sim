@@ -1,10 +1,15 @@
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
+
 pub const MIPS_REGS: usize = 32;
 
+#[derive(Clone, Copy)]
 struct CpuState {
-    PC: u32,
-    REGS: [u32; MIPS_REGS],
-    HI: u32,
-    LO: u32,
+    pc: u32,
+    regs: [u32; MIPS_REGS],
+    hi: u32,
+    lo: u32,
 }
 
 struct MemRegion {
@@ -13,21 +18,21 @@ struct MemRegion {
     mem: Vec<u8>,
 }
 
-struct MipsComputer {
+pub struct MipsComputer {
     curr_state: CpuState,
     next_state: CpuState,
     run_bit: bool,
-    instr_cnt: i32,
+    instr_cnt: u32,
     memory: [MemRegion; 5],
 }
 
 impl CpuState {
     fn new() -> Self {
         Self {
-            PC: 0,
-            REGS: [0; MIPS_REGS],
-            HI: 0,
-            LO: 0,
+            pc: 0,
+            regs: [0; MIPS_REGS],
+            hi: 0,
+            lo: 0,
         }
     }
 }
@@ -84,7 +89,7 @@ pub const MEM_KTEXT_START: usize = 0x80000000;
 pub const MEM_KTEXT_SIZE: usize = 0x00100000;
 
 impl MipsComputer {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             curr_state: CpuState::new(),
             next_state: CpuState::new(),
@@ -98,5 +103,110 @@ impl MipsComputer {
                 MemRegion::new(MEM_KTEXT_START, MEM_KTEXT_SIZE),
             ],
         }
+    }
+
+    fn mem_read_32(&self, address: usize) -> Option<u32> {
+        for mem_reg in &self.memory {
+            if let Some(data) = mem_reg.read_32(address) {
+                return Some(data);
+            }
+        }
+        return None;
+    }
+
+    fn mem_write_32(&mut self, address: usize, value: u32) -> bool {
+        for mem_reg in &mut self.memory {
+            if mem_reg.write_32(address, value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn process_instruction(&mut self) {
+        unimplemented!("Cannot yet process instruction!")
+    }
+
+    pub fn cycle(&mut self) {
+        self.process_instruction();
+        self.curr_state = self.next_state;
+        self.instr_cnt += 1;
+    }
+
+    pub fn run(&mut self, num_cycles: u32) {
+        if !self.run_bit {
+            println!("Can't simulate, Simulator halted\n");
+        } else {
+            println!("Simulating for {} cycles...\n", num_cycles);
+            for _i in 0..num_cycles {
+                if !self.run_bit {
+                    println!("Simulator halted\n");
+                    break;
+                }
+                self.cycle();
+            }
+        }
+    }
+
+    pub fn go(&mut self) {
+        if !self.run_bit {
+            println!("Can't simulate, Simulator halted\n");
+        } else {
+            println!("Simulating...\n");
+            while self.run_bit {
+                self.cycle();
+            }
+            println!("Simulator halted\n");
+        }
+    }
+
+    fn mdump_intern<T: Write>(&self, start: usize, stop: usize, out: &mut T) -> io::Result<()> {
+        let mut address: usize;
+
+        writeln!(out, "\nMemory content [{:#08X}..{:#08X}] :", start, stop)?;
+        writeln!(out, "-----------------------------------------")?;
+        address = start;
+        while address <= stop {
+            if let Some(value) = self.mem_read_32(address) {
+                writeln!(out, "    {:#08X}  ({}) : {:#08X}", address, address, value)?;
+            } else {
+                writeln!(
+                    out,
+                    "    {:#08X}  ({}) : <undefined address>",
+                    address, address
+                )?;
+            }
+            address += 4;
+        }
+        writeln!(out, "")?;
+
+        Ok(())
+    }
+
+    pub fn mdump(&self, start: usize, stop: usize, file: &mut File) -> io::Result<()> {
+        self.mdump_intern(start, stop, &mut io::stdout())?;
+        self.mdump_intern(start, stop, file)?;
+        Ok(())
+    }
+
+    fn rdump_intern<T: Write>(&self, out: &mut T) -> io::Result<()> {
+        writeln!(out, "\n Current reigster/bus values :")?;
+        writeln!(out, "-------------------------------")?;
+        writeln!(out, "Instruction count : {}", self.instr_cnt)?;
+        writeln!(out, "PC                : {:#08X}", self.curr_state.pc)?;
+        writeln!(out, "Registers:")?;
+        for (i, reg) in self.curr_state.regs.iter().enumerate() {
+            writeln!(out, "R{}: {:#08X}", i, reg)?;
+        }
+        writeln!(out, "HI: {:#08X}", self.curr_state.hi)?;
+        writeln!(out, "LO: {:#08X}", self.curr_state.lo)?;
+        writeln!(out, "")?;
+        Ok(())
+    }
+
+    pub fn rdump(&self, file: &mut File) -> io::Result<()> {
+        self.rdump_intern(&mut io::stdout())?;
+        self.rdump_intern(file)?;
+        Ok(())
     }
 }
