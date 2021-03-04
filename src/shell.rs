@@ -1,8 +1,9 @@
 use super::sim::*;
-use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process::exit;
+use std::usize;
+use std::{fs::File, num::ParseIntError};
 
 fn help() {
     print!("----------------MIPS ISIM Help------------------------\n");
@@ -15,6 +16,11 @@ fn help() {
     print!("low value             - set the LO register to value  \n");
     print!("?                     - display this help menu        \n");
     print!("quit                  - exit the program              \n\n");
+}
+
+fn parse_hex(inp: &str) -> Result<usize, ParseIntError> {
+    let inp = inp.trim_start_matches("0x");
+    usize::from_str_radix(inp, 16)
 }
 
 pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
@@ -39,13 +45,13 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
                     "mdump requires 2 params",
                 ));
             }
-            let start: usize = match parts[1].parse() {
+            let start: usize = match parse_hex(parts[1]) {
                 Ok(val) => val,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
                 }
             };
-            let end: usize = match parts[2].parse() {
+            let end: usize = match parse_hex(parts[2]) {
                 Ok(val) => val,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
@@ -81,14 +87,14 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
                     "input requires 2 params",
                 ));
             }
-            let register_no: usize = match parts[1].parse() {
+            let register_no: usize = match parse_hex(parts[1]) {
                 Ok(val) => val,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
                 }
             };
-            let register_value: u32 = match parts[2].parse() {
-                Ok(val) => val,
+            let register_value: u32 = match parse_hex(parts[2]) {
+                Ok(val) => val as u32,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
                 }
@@ -103,8 +109,8 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
                     "high requires 1 param",
                 ));
             }
-            let high_reg_val: u32 = match parts[1].parse() {
-                Ok(val) => val,
+            let high_reg_val: u32 = match parse_hex(parts[1]) {
+                Ok(val) => val as u32,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
                 }
@@ -119,8 +125,8 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
                     "low requires 1 param",
                 ));
             }
-            let low_reg_val: u32 = match parts[1].parse() {
-                Ok(val) => val,
+            let low_reg_val: u32 = match parse_hex(parts[1]) {
+                Ok(val) => val as u32,
                 Err(e) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, e));
                 }
