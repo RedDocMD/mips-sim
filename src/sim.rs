@@ -234,16 +234,20 @@ impl MipsComputer {
     fn mdump_intern<T: Write>(&self, start: usize, stop: usize, out: &mut T) -> io::Result<()> {
         let mut address: usize;
 
-        writeln!(out, "\nMemory content [{:#08X}..{:#08X}] :", start, stop)?;
+        writeln!(out, "\nMemory content [{:#010X}..{:#010X}] :", start, stop)?;
         writeln!(out, "-----------------------------------------")?;
         address = start;
         while address <= stop {
             if let Some(value) = self.mem_read_32(address) {
-                writeln!(out, "    {:#08X}  ({}) : {:#08X}", address, address, value)?;
+                writeln!(
+                    out,
+                    "    {:#010X}  ({}) : {:#010X}",
+                    address, address, value
+                )?;
             } else {
                 writeln!(
                     out,
-                    "    {:#08X}  ({}) : <undefined address>",
+                    "    {:#010X}  ({}) : <undefined address>",
                     address, address
                 )?;
             }
@@ -264,13 +268,13 @@ impl MipsComputer {
         writeln!(out, "\n Current reigster/bus values :")?;
         writeln!(out, "-------------------------------")?;
         writeln!(out, "Instruction count : {}", self.instr_cnt)?;
-        writeln!(out, "PC                : {:#08X}", self.curr_state.pc)?;
+        writeln!(out, "PC                : {:#010X}", self.curr_state.pc)?;
         writeln!(out, "Registers:")?;
         for (i, reg) in self.curr_state.regs.iter().enumerate() {
-            writeln!(out, "R{}: {:#08X}", i, reg)?;
+            writeln!(out, "R{}: {:#010X}", i, reg)?;
         }
-        writeln!(out, "HI: {:#08X}", self.curr_state.hi)?;
-        writeln!(out, "LO: {:#08X}", self.curr_state.lo)?;
+        writeln!(out, "HI: {:#010X}", self.curr_state.hi)?;
+        writeln!(out, "LO: {:#010X}", self.curr_state.lo)?;
         writeln!(out, "")?;
         Ok(())
     }
