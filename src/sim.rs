@@ -199,13 +199,24 @@ impl MipsComputer {
                 self.run_bit = false;
             } else {
                 let instr = parse_instr(instr);
-                println!("{:?}", instr);
+                println!("Processing {:?}", instr);
+                match instr {
+                    Instr::JType(instr) => self.process_jtype_instruction(&instr),
+                    Instr::IType(instr) => self.process_itype_instruction(&instr),
+                    Instr::RType(instr) => self.process_rtype_instruction(&instr),
+                };
                 self.next_state.pc = self.curr_state.pc + 4;
             }
         } else {
             self.run_bit = false;
         }
     }
+
+    fn process_jtype_instruction(&mut self, instr: &JType) {}
+
+    fn process_itype_instruction(&mut self, instr: &IType) {}
+
+    fn process_rtype_instruction(&mut self, instr: &RType) {}
 
     pub fn cycle(&mut self) {
         self.process_instruction();
