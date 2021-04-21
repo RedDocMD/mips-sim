@@ -28,9 +28,9 @@ pub struct MipsComputer {
 }
 
 impl CpuState {
-    fn new() -> Self {
+    fn new(pc: u32) -> Self {
         Self {
-            pc: 0,
+            pc,
             regs: [0; MIPS_REGS],
             hi: 0,
             lo: 0,
@@ -121,9 +121,10 @@ pub const MEM_KTEXT_SIZE: usize = 0x00100000;
 
 impl MipsComputer {
     pub fn new(filenames: &[String]) -> io::Result<Self> {
+        let state = CpuState::new(MEM_KDATA_START as u32);
         let mut comp = Self {
-            curr_state: CpuState::new(),
-            next_state: CpuState::new(),
+            curr_state: state,
+            next_state: state,
             run_bit: true,
             instr_cnt: 0,
             memory: [
@@ -195,7 +196,18 @@ impl MipsComputer {
     }
 
     fn process_instruction(&mut self) {
-        unimplemented!("Cannot yet process instruction!")
+        let instr = self.mem_read_32(self.curr_state.pc as usize);
+        if let Some(instr) = instr {
+            if instr == 0 {
+                self.run_bit = false;
+            } else {
+                let op = extract_opcode(instr);
+                println!("{:#08b}", op);
+                self.next_state.pc = self.curr_state.pc + 4;
+            }
+        } else {
+            self.run_bit = false;
+        }
     }
 
     pub fn cycle(&mut self) {
@@ -301,3 +313,43 @@ impl MipsComputer {
         &mut self.next_state
     }
 }
+
+// Extract the top 6 bits
+fn extract_opcode(instr: u32) -> u32 {
+    const MASK: u32 = 0xFC000000;
+    const POS: u32 = 26;
+
+    (instr & MASK) >> POS
+}
+
+struct JType {
+    opcode: u32,
+    target: u32,
+    op: Op,
+}
+
+struct IType {
+    opcode: u32,
+    rs: u32,
+    rt: u32,
+    imm: u32,
+    op: Op,
+}
+
+struct RType {
+    opcode: u32,
+    rs: u32,
+    rt: u32,
+    rd: u32,
+    shamt: u32,
+    funct: u32,
+    op: Op,
+}
+
+enum Instr {
+    JType(JType),
+    IType(IType),
+    RType(RType),
+}
+
+enum Op {}
