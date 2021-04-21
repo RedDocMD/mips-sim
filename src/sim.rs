@@ -197,6 +197,7 @@ impl MipsComputer {
                 self.run_bit = false;
             } else {
                 let instr = parse_instr(instr);
+                println!("{:?}", instr);
                 self.next_state.pc = self.curr_state.pc + 4;
             }
         } else {
@@ -308,12 +309,14 @@ impl MipsComputer {
     }
 }
 
+#[derive(Debug)]
 struct JType {
     opcode: u32,
     target: u32,
     op: JOp,
 }
 
+#[derive(Debug)]
 struct IType {
     opcode: u32,
     rs: u32,
@@ -322,6 +325,7 @@ struct IType {
     op: IOp,
 }
 
+#[derive(Debug)]
 struct RType {
     opcode: u32,
     rs: u32,
@@ -332,17 +336,20 @@ struct RType {
     op: ROp,
 }
 
+#[derive(Debug)]
 enum Instr {
     JType(JType),
     IType(IType),
     RType(RType),
 }
 
+#[derive(Debug)]
 enum JOp {
     J,
     JAL,
 }
 
+#[derive(Debug)]
 enum IOp {
     BEQ,
     BNE,
@@ -370,6 +377,7 @@ enum IOp {
     BGEZAL,
 }
 
+#[derive(Debug)]
 enum ROp {
     SLL,
     SRL,
@@ -388,6 +396,7 @@ enum ROp {
     XOR,
     NOR,
     SLT,
+    SLTU,
     MULT,
     MULTU,
     DIV,
@@ -433,6 +442,7 @@ fn parse_instr(instr: u32) -> Instr {
         0x29 => Instr::IType(parse_immediate_instr(instr, IOp::SH)),
         0x2B => Instr::IType(parse_immediate_instr(instr, IOp::SW)),
         0x1 => Instr::IType(parse_immediate_instr_and_op(instr)),
+        0x0 => Instr::RType(parse_register_instr(instr)),
         _ => panic!("Unknown instruction!"),
     }
 }
@@ -485,6 +495,65 @@ fn parse_immediate_instr_and_op(instr: u32) -> IType {
         rt,
         imm,
         opcode: extract_opcode(instr),
+        op,
+    }
+}
+
+fn parse_register_instr(instr: u32) -> RType {
+    const RS_MASK: u32 = 0x3E00000;
+    const RS_SHIFT: u32 = 21;
+    const RT_MASK: u32 = 0x1F0000;
+    const RT_SHIFT: u32 = 16;
+    const RD_MASK: u32 = 0xF800;
+    const RD_SHIFT: u32 = 11;
+    const SHAMT_MASK: u32 = 0x7C0;
+    const SHAMT_SHIFT: u32 = 6;
+    const FUNCT_MASK: u32 = 0x3F;
+    let rs = (instr & RS_MASK) >> RS_SHIFT;
+    let rt = (instr & RT_MASK) >> RT_SHIFT;
+    let rd = (instr & RD_MASK) >> RD_SHIFT;
+    let shamt = (instr & SHAMT_MASK) >> SHAMT_SHIFT;
+    let funct = instr & FUNCT_MASK;
+
+    assert_eq!(extract_opcode(instr), 0);
+    let op = match funct {
+        0x0 => ROp::SLL,
+        0x2 => ROp::SRL,
+        0x3 => ROp::SRA,
+        0x4 => ROp::SLLV,
+        0x6 => ROp::SRLV,
+        0x7 => ROp::SRAV,
+        0x8 => ROp::JR,
+        0x9 => ROp::JALR,
+        0x20 => ROp::ADD,
+        0x21 => ROp::ADDU,
+        0x22 => ROp::SUB,
+        0x23 => ROp::SUBU,
+        0x24 => ROp::AND,
+        0x25 => ROp::OR,
+        0x26 => ROp::XOR,
+        0x27 => ROp::NOR,
+        0x2A => ROp::SLT,
+        0x2B => ROp::SLTU,
+        0x18 => ROp::MULT,
+        0x19 => ROp::MULTU,
+        0x1A => ROp::DIV,
+        0x1B => ROp::DIVU,
+        0x10 => ROp::MFHI,
+        0x12 => ROp::MFLO,
+        0x11 => ROp::MTHI,
+        0x13 => ROp::MTLO,
+        0xC => ROp::SYSCALL,
+        _ => panic!("Unknown R Type instruction"),
+    };
+
+    RType {
+        opcode: 0,
+        rs,
+        rt,
+        rd,
+        shamt,
+        funct,
         op,
     }
 }
