@@ -196,8 +196,7 @@ impl MipsComputer {
             if instr == 0 {
                 self.run_bit = false;
             } else {
-                let op = extract_opcode(instr);
-                println!("{:#034b} => {:#08b}", instr, op);
+                let instr = parse_instr(instr);
                 self.next_state.pc = self.curr_state.pc + 4;
             }
         } else {
@@ -309,14 +308,6 @@ impl MipsComputer {
     }
 }
 
-// Extract the top 6 bits
-fn extract_opcode(instr: u32) -> u32 {
-    const MASK: u32 = 0xFC000000;
-    const POS: u32 = 26;
-
-    (instr & MASK) >> POS
-}
-
 struct JType {
     opcode: u32,
     target: u32,
@@ -347,6 +338,153 @@ enum Instr {
     RType(RType),
 }
 
-enum JOp {}
-enum IOp {}
-enum ROp {}
+enum JOp {
+    J,
+    JAL,
+}
+
+enum IOp {
+    BEQ,
+    BNE,
+    BLEZ,
+    BGTZ,
+    ADDI,
+    ADDIU,
+    SLTI,
+    SLTIU,
+    ANDI,
+    ORI,
+    XORI,
+    LUI,
+    LB,
+    LH,
+    LW,
+    LBU,
+    LHU,
+    SB,
+    SH,
+    SW,
+    BLTZ,
+    BGEZ,
+    BLTZAL,
+    BGEZAL,
+}
+
+enum ROp {
+    SLL,
+    SRL,
+    SRA,
+    SLLV,
+    SRLV,
+    SRAV,
+    JR,
+    JALR,
+    ADD,
+    ADDU,
+    SUB,
+    SUBU,
+    AND,
+    OR,
+    XOR,
+    NOR,
+    SLT,
+    MULT,
+    MULTU,
+    DIV,
+    DIVU,
+    MFHI,
+    MFLO,
+    MTHI,
+    MTLO,
+    SYSCALL,
+}
+
+// Extract the top 6 bits
+fn extract_opcode(instr: u32) -> u32 {
+    const MASK: u32 = 0xFC000000;
+    const POS: u32 = 26;
+
+    (instr & MASK) >> POS
+}
+
+fn parse_instr(instr: u32) -> Instr {
+    let opcode = extract_opcode(instr);
+    match opcode {
+        0x2 => Instr::JType(parse_jump_instr(instr, JOp::J)),
+        0x3 => Instr::JType(parse_jump_instr(instr, JOp::JAL)),
+        0x4 => Instr::IType(parse_immediate_instr(instr, IOp::BEQ)),
+        0x5 => Instr::IType(parse_immediate_instr(instr, IOp::BNE)),
+        0x6 => Instr::IType(parse_immediate_instr(instr, IOp::BLEZ)),
+        0x7 => Instr::IType(parse_immediate_instr(instr, IOp::BGTZ)),
+        0x8 => Instr::IType(parse_immediate_instr(instr, IOp::ADDI)),
+        0x9 => Instr::IType(parse_immediate_instr(instr, IOp::ADDIU)),
+        0xA => Instr::IType(parse_immediate_instr(instr, IOp::SLTI)),
+        0xB => Instr::IType(parse_immediate_instr(instr, IOp::SLTIU)),
+        0xC => Instr::IType(parse_immediate_instr(instr, IOp::ANDI)),
+        0xD => Instr::IType(parse_immediate_instr(instr, IOp::ORI)),
+        0xE => Instr::IType(parse_immediate_instr(instr, IOp::XORI)),
+        0xF => Instr::IType(parse_immediate_instr(instr, IOp::LUI)),
+        0x20 => Instr::IType(parse_immediate_instr(instr, IOp::LB)),
+        0x21 => Instr::IType(parse_immediate_instr(instr, IOp::LH)),
+        0x23 => Instr::IType(parse_immediate_instr(instr, IOp::LW)),
+        0x24 => Instr::IType(parse_immediate_instr(instr, IOp::LBU)),
+        0x25 => Instr::IType(parse_immediate_instr(instr, IOp::LHU)),
+        0x28 => Instr::IType(parse_immediate_instr(instr, IOp::SB)),
+        0x29 => Instr::IType(parse_immediate_instr(instr, IOp::SH)),
+        0x2B => Instr::IType(parse_immediate_instr(instr, IOp::SW)),
+        0x1 => Instr::IType(parse_immediate_instr_and_op(instr)),
+        _ => panic!("Unknown instruction!"),
+    }
+}
+
+fn parse_jump_instr(instr: u32, op: JOp) -> JType {
+    const MASK: u32 = 0x3FFFFFF;
+    JType {
+        opcode: extract_opcode(instr),
+        target: instr & MASK,
+        op,
+    }
+}
+
+fn parse_immediate_instr(instr: u32, op: IOp) -> IType {
+    const RS_MASK: u32 = 0x3E00000;
+    const RS_SHIFT: u32 = 21;
+    const RT_MASK: u32 = 0x1F0000;
+    const RT_SHIFT: u32 = 16;
+    const IMM_MASK: u32 = 0xFFFF;
+    let rs = (instr & RS_MASK) >> RS_SHIFT;
+    let rt = (instr & RT_MASK) >> RT_SHIFT;
+    let imm = instr & IMM_MASK;
+    IType {
+        rs,
+        rt,
+        imm,
+        opcode: extract_opcode(instr),
+        op,
+    }
+}
+
+fn parse_immediate_instr_and_op(instr: u32) -> IType {
+    const RS_MASK: u32 = 0x3E00000;
+    const RS_SHIFT: u32 = 21;
+    const RT_MASK: u32 = 0x1F0000;
+    const RT_SHIFT: u32 = 16;
+    const IMM_MASK: u32 = 0xFFFF;
+    let rs = (instr & RS_MASK) >> RS_SHIFT;
+    let rt = (instr & RT_MASK) >> RT_SHIFT;
+    let imm = instr & IMM_MASK;
+    let op = match rt {
+        0x0 => IOp::BLTZ,
+        0x1 => IOp::BGEZ,
+        0x20 => IOp::BLTZAL,
+        0x21 => IOp::BGEZAL,
+        _ => panic!("Uknown branch instruction for REGIMM"),
+    };
+    IType {
+        rs,
+        rt,
+        imm,
+        opcode: extract_opcode(instr),
+        op,
+    }
+}
