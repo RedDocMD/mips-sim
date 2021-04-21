@@ -28,9 +28,9 @@ pub struct MipsComputer {
 }
 
 impl CpuState {
-    fn new(pc: u32) -> Self {
+    fn new() -> Self {
         Self {
-            pc,
+            pc: 0,
             regs: [0; MIPS_REGS],
             hi: 0,
             lo: 0,
@@ -121,10 +121,9 @@ pub const MEM_KTEXT_SIZE: usize = 0x00100000;
 
 impl MipsComputer {
     pub fn new(filenames: &[String]) -> io::Result<Self> {
-        let state = CpuState::new(MEM_KDATA_START as u32);
         let mut comp = Self {
-            curr_state: state,
-            next_state: state,
+            curr_state: CpuState::new(),
+            next_state: CpuState::new(),
             run_bit: true,
             instr_cnt: 0,
             memory: [
@@ -156,10 +155,6 @@ impl MipsComputer {
                 // EOF
                 break;
             }
-            if bytes_read < 4 {
-                buf.rotate_left(bytes_read);
-            }
-            buf.reverse(); // Big-endian to little-endian
             self.mem_write_bytes(MEM_TEXT_START + off, &buf);
             off += 4;
         }
@@ -202,7 +197,7 @@ impl MipsComputer {
                 self.run_bit = false;
             } else {
                 let op = extract_opcode(instr);
-                println!("{:#08b}", op);
+                println!("{:#034b} => {:#08b}", instr, op);
                 self.next_state.pc = self.curr_state.pc + 4;
             }
         } else {
@@ -325,7 +320,7 @@ fn extract_opcode(instr: u32) -> u32 {
 struct JType {
     opcode: u32,
     target: u32,
-    op: Op,
+    op: JOp,
 }
 
 struct IType {
@@ -333,7 +328,7 @@ struct IType {
     rs: u32,
     rt: u32,
     imm: u32,
-    op: Op,
+    op: IOp,
 }
 
 struct RType {
@@ -343,7 +338,7 @@ struct RType {
     rd: u32,
     shamt: u32,
     funct: u32,
-    op: Op,
+    op: ROp,
 }
 
 enum Instr {
@@ -352,4 +347,6 @@ enum Instr {
     RType(RType),
 }
 
-enum Op {}
+enum JOp {}
+enum IOp {}
+enum ROp {}
