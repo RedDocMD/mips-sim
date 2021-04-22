@@ -5,6 +5,20 @@ pub struct JType {
     op: JOp,
 }
 
+impl JType {
+    pub fn op(&self) -> JOp {
+        self.op
+    }
+
+    pub fn opcode(&self) -> u32 {
+        self.opcode
+    }
+
+    pub fn target(&self) -> u32 {
+        self.target
+    }
+}
+
 #[derive(Debug)]
 pub struct IType {
     opcode: u32,
@@ -12,6 +26,28 @@ pub struct IType {
     rt: u32,
     imm: u32,
     op: IOp,
+}
+
+impl IType {
+    pub fn op(&self) -> IOp {
+        self.op
+    }
+
+    pub fn opcode(&self) -> u32 {
+        self.opcode
+    }
+
+    pub fn rs(&self) -> u32 {
+        self.rs
+    }
+
+    pub fn rt(&self) -> u32 {
+        self.rt
+    }
+
+    pub fn imm(&self) -> u32 {
+        self.imm
+    }
 }
 
 #[derive(Debug)]
@@ -25,6 +61,36 @@ pub struct RType {
     op: ROp,
 }
 
+impl RType {
+    pub fn op(&self) -> ROp {
+        self.op
+    }
+
+    pub fn opcode(&self) -> u32 {
+        self.opcode
+    }
+
+    pub fn rs(&self) -> u32 {
+        self.rs
+    }
+
+    pub fn rt(&self) -> u32 {
+        self.rt
+    }
+
+    pub fn rd(&self) -> u32 {
+        self.rd
+    }
+
+    pub fn shamt(&self) -> u32 {
+        self.shamt
+    }
+
+    pub fn funct(&self) -> u32 {
+        self.funct
+    }
+}
+
 #[derive(Debug)]
 pub enum Instr {
     JType(JType),
@@ -32,13 +98,13 @@ pub enum Instr {
     RType(RType),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum JOp {
     J,
     JAL,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum IOp {
     BEQ,
     BNE,
@@ -66,7 +132,7 @@ pub enum IOp {
     BGEZAL,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ROp {
     SLL,
     SRL,
