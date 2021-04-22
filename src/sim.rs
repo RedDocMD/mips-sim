@@ -72,14 +72,23 @@ impl MemRegion {
 
     fn read_32(&self, address: usize) -> Option<u32> {
         if !self.contains_address(address) {
-            return None;
+            None
         } else {
             let offset = address - self.start;
             let byte3 = self.mem[offset + 3] as u32;
             let byte2 = self.mem[offset + 2] as u32;
             let byte1 = self.mem[offset + 1] as u32;
             let byte0 = self.mem[offset] as u32;
-            return Some((byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0);
+            Some((byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0)
+        }
+    }
+
+    fn read_8(&self, address: usize) -> Option<u8> {
+        if !self.contains_address(address) {
+            None
+        } else {
+            let offset = address - self.start;
+            Some(self.mem[offset])
         }
     }
 
@@ -174,6 +183,15 @@ impl MipsComputer {
         return None;
     }
 
+    fn mem_read_8(&self, address: usize) -> Option<u8> {
+        for mem_reg in &self.memory {
+            if let Some(data) = mem_reg.read_8(address) {
+                return Some(data);
+            }
+        }
+        return None;
+    }
+
     fn mem_write_32(&mut self, address: usize, value: u32) -> bool {
         for mem_reg in &mut self.memory {
             if mem_reg.write_32(address, value) {
@@ -200,23 +218,136 @@ impl MipsComputer {
             } else {
                 let instr = parse_instr(instr);
                 println!("Processing {:?}", instr);
-                match instr {
+                let incr_pc = match instr {
                     Instr::JType(instr) => self.process_jtype_instruction(&instr),
                     Instr::IType(instr) => self.process_itype_instruction(&instr),
                     Instr::RType(instr) => self.process_rtype_instruction(&instr),
                 };
-                self.next_state.pc = self.curr_state.pc + 4;
+                if incr_pc {
+                    self.next_state.pc = self.curr_state.pc + 4;
+                }
             }
         } else {
             self.run_bit = false;
         }
     }
 
-    fn process_jtype_instruction(&mut self, instr: &JType) {}
+    fn process_jtype_instruction(&mut self, instr: &JType) -> bool {
+        match instr.op() {
+            JOp::J => {
+                const TOP_BYTE_MASK: u32 = 0xF0000000;
+                let top_byte = self.curr_state.pc & TOP_BYTE_MASK;
+                self.next_state.pc = top_byte | (instr.target() << 2);
+                false
+            }
+            JOp::JAL => {
+                const TOP_BYTE_MASK: u32 = 0xF0000000;
+                let top_byte = self.curr_state.pc & TOP_BYTE_MASK;
+                self.next_state.pc = top_byte | (instr.target() << 2);
+                self.next_state.regs[31] = self.curr_state.pc + 4;
+                false
+            }
+        }
+    }
 
-    fn process_itype_instruction(&mut self, instr: &IType) {}
+    fn process_itype_instruction(&mut self, instr: &IType) -> bool {
+        match instr.op() {
+            IOp::BEQ => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                if self.curr_state.regs[instr.rs() as usize]
+                    == self.curr_state.regs[instr.rt() as usize]
+                {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::BNE => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                if self.curr_state.regs[instr.rs() as usize]
+                    != self.curr_state.regs[instr.rt() as usize]
+                {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::BLEZ => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                if val <= 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::BGTZ => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                if val > 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::ADDI | IOp::ADDIU => {
+                let signed_imm = sign_extend32(instr.imm(), 16);
+                self.next_state.regs[instr.rt() as usize] =
+                    (self.curr_state.regs[instr.rs() as usize] as i32 + signed_imm) as u32;
+                true
+            }
+            IOp::SLTI => {
+                let signed_imm = sign_extend32(instr.imm(), 16);
+                if (self.curr_state.regs[instr.rs() as usize] as i32) < signed_imm {
+                    self.next_state.regs[instr.rt() as usize] = 1;
+                } else {
+                    self.next_state.regs[instr.rt() as usize] = 0;
+                }
+                true
+            }
+            IOp::SLTIU => {
+                let signed_imm = sign_extend32(instr.imm(), 16);
+                if self.curr_state.regs[instr.rs() as usize] < signed_imm as u32 {
+                    self.next_state.regs[instr.rt() as usize] = 1;
+                } else {
+                    self.next_state.regs[instr.rt() as usize] = 0;
+                }
+                true
+            }
+            IOp::ANDI => {
+                self.next_state.regs[instr.rt() as usize] =
+                    self.curr_state.regs[instr.rs() as usize] & instr.imm();
+                true
+            }
+            IOp::ORI => {
+                self.next_state.regs[instr.rt() as usize] =
+                    self.curr_state.regs[instr.rs() as usize] | instr.imm();
+                true
+            }
+            IOp::XORI => {
+                self.next_state.regs[instr.rt() as usize] =
+                    self.curr_state.regs[instr.rs() as usize] ^ instr.imm();
+                true
+            }
+            IOp::LUI => {
+                self.next_state.regs[instr.rt() as usize] = instr.imm() << 16;
+                true
+            }
+            IOp::LB => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                if let Some(byte) = self.mem_read_8(address as usize) {
+                    self.next_state.regs[instr.rt() as usize] =
+                        sign_extend32(byte as u32, 8) as u32;
+                }
+                true
+            }
+        }
+    }
 
-    fn process_rtype_instruction(&mut self, instr: &RType) {}
+    fn process_rtype_instruction(&mut self, instr: &RType) -> bool {
+        true
+    }
 
     pub fn cycle(&mut self) {
         self.process_instruction();
@@ -320,4 +451,9 @@ impl MipsComputer {
     pub fn next_state_mut(&mut self) -> &mut CpuState {
         &mut self.next_state
     }
+}
+
+fn sign_extend32(data: u32, size: u32) -> i32 {
+    assert!(size >= 0 && size <= 32);
+    ((data << (32 - size)) as i32) >> (32 - size)
 }
