@@ -92,6 +92,17 @@ impl MemRegion {
         }
     }
 
+    fn read_16(&self, address: usize) -> Option<u16> {
+        if !self.contains_address(address) {
+            None
+        } else {
+            let offset = address - self.start;
+            let byte1 = self.mem[offset + 1] as u16;
+            let byte0 = self.mem[offset] as u16;
+            Some((byte1 << 8) | byte0)
+        }
+    }
+
     fn write_32(&mut self, address: usize, value: u32) -> bool {
         if !self.contains_address(address) {
             return false;
@@ -177,6 +188,15 @@ impl MipsComputer {
     fn mem_read_32(&self, address: usize) -> Option<u32> {
         for mem_reg in &self.memory {
             if let Some(data) = mem_reg.read_32(address) {
+                return Some(data);
+            }
+        }
+        return None;
+    }
+
+    fn mem_read_16(&self, address: usize) -> Option<u16> {
+        for mem_reg in &self.memory {
+            if let Some(data) = mem_reg.read_16(address) {
                 return Some(data);
             }
         }
@@ -281,6 +301,15 @@ impl MipsComputer {
                 }
                 false
             }
+            IOp::BGEZ => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                if val >= 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
             IOp::BGTZ => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
                 let new_addr = self.curr_state.pc as i32 + ext_off;
@@ -290,6 +319,36 @@ impl MipsComputer {
                 }
                 false
             }
+            IOp::BLTZ => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                if val < 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::BLTZAL => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                self.next_state.regs[31] = self.curr_state.pc + 4;
+                if val < 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+            IOp::BGEZAL => {
+                let ext_off = sign_extend32(instr.imm() << 2, 18);
+                let new_addr = self.curr_state.pc as i32 + ext_off;
+                let val = self.curr_state.regs[instr.rs() as usize] as i32;
+                self.next_state.regs[31] = self.curr_state.pc + 4;
+                if val >= 0 {
+                    self.next_state.pc = new_addr as u32;
+                }
+                false
+            }
+
             IOp::ADDI | IOp::ADDIU => {
                 let signed_imm = sign_extend32(instr.imm(), 16);
                 self.next_state.regs[instr.rt() as usize] =
@@ -336,10 +395,77 @@ impl MipsComputer {
             IOp::LB => {
                 let offset = sign_extend32(instr.imm(), 16);
                 let address = instr.rs() as i32 + offset;
-                if let Some(byte) = self.mem_read_8(address as usize) {
-                    self.next_state.regs[instr.rt() as usize] =
-                        sign_extend32(byte as u32, 8) as u32;
-                }
+                let byte = self
+                    .mem_read_8(address as usize)
+                    .expect("Cannot read from invalid address");
+                self.next_state.regs[instr.rt() as usize] = sign_extend32(byte as u32, 8) as u32;
+                true
+            }
+            IOp::LH => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                let halfword = self
+                    .mem_read_16(address as usize)
+                    .expect("Cannot read from invalid address");
+                self.next_state.regs[instr.rt() as usize] =
+                    sign_extend32(halfword as u32, 16) as u32;
+                true
+            }
+            IOp::LW => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                let word = self
+                    .mem_read_32(address as usize)
+                    .expect("Cannot read from invalid address");
+                self.next_state.regs[instr.rt() as usize] = word;
+                true
+            }
+            IOp::LBU => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                let byte = self
+                    .mem_read_8(address as usize)
+                    .expect("Cannot read from invalid address");
+                self.next_state.regs[instr.rt() as usize] = byte as u32;
+                true
+            }
+            IOp::LHU => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                let halfword = self
+                    .mem_read_16(address as usize)
+                    .expect("Cannot read from invalid address");
+                self.next_state.regs[instr.rt() as usize] = halfword as u32;
+                true
+            }
+            IOp::SB => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                const MASK: u32 = 0xFF;
+                let written = self.mem_write_32(
+                    address as usize,
+                    self.curr_state.regs[instr.rt() as usize] & MASK,
+                );
+                assert!(written);
+                true
+            }
+            IOp::SH => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                const MASK: u32 = 0xFFFF;
+                let written = self.mem_write_32(
+                    address as usize,
+                    self.curr_state.regs[instr.rt() as usize] & MASK,
+                );
+                assert!(written);
+                true
+            }
+            IOp::SW => {
+                let offset = sign_extend32(instr.imm(), 16);
+                let address = instr.rs() as i32 + offset;
+                let written =
+                    self.mem_write_32(address as usize, self.curr_state.regs[instr.rt() as usize]);
+                assert!(written);
                 true
             }
         }
