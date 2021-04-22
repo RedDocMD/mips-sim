@@ -549,11 +549,91 @@ impl MipsComputer {
                 true
             }
             ROp::NOR => {
-                const MASK: u32 = 0xFFFFFFFF;
-                self.next_state.regs[instr.rd() as usize] = (self.curr_state.regs
+                self.next_state.regs[instr.rd() as usize] = !(self.curr_state.regs
                     [instr.rs() as usize]
-                    | self.curr_state.regs[instr.rt() as usize])
-                    ^ MASK;
+                    | self.curr_state.regs[instr.rt() as usize]);
+                true
+            }
+            ROp::SLT => {
+                let first = self.curr_state.regs[instr.rs() as usize] as i32;
+                let second = self.curr_state.regs[instr.rt() as usize] as i32;
+                if first < second {
+                    self.next_state.regs[instr.rd() as usize] = 1;
+                } else {
+                    self.next_state.regs[instr.rd() as usize] = 0;
+                }
+                true
+            }
+            ROp::SLTU => {
+                let first = self.curr_state.regs[instr.rs() as usize];
+                let second = self.curr_state.regs[instr.rt() as usize];
+                if first < second {
+                    self.next_state.regs[instr.rd() as usize] = 1;
+                } else {
+                    self.next_state.regs[instr.rd() as usize] = 0;
+                }
+                true
+            }
+            ROp::MULT => {
+                let first = self.curr_state.regs[instr.rs() as usize] as i64;
+                let second = self.curr_state.regs[instr.rt() as usize] as i64;
+                let product = (first * second) as u64;
+                const LOWER_MASK: u64 = (!(0 as u32)) as u64;
+                const UPPER_MASK: u64 = LOWER_MASK << 32;
+                self.next_state.hi = ((product & UPPER_MASK) >> 32) as u32;
+                self.next_state.lo = (product & LOWER_MASK) as u32;
+                true
+            }
+            ROp::MULTU => {
+                let first = self.curr_state.regs[instr.rs() as usize] as u64;
+                let second = self.curr_state.regs[instr.rt() as usize] as u64;
+                let product = first * second;
+                const LOWER_MASK: u64 = (!(0 as u32)) as u64;
+                const UPPER_MASK: u64 = LOWER_MASK << 32;
+                self.next_state.hi = ((product & UPPER_MASK) >> 32) as u32;
+                self.next_state.lo = (product & LOWER_MASK) as u32;
+                true
+            }
+            ROp::DIV => {
+                let first = self.curr_state.regs[instr.rs() as usize] as i64;
+                let second = self.curr_state.regs[instr.rt() as usize] as i64;
+                let product = (first / second) as u64;
+                const LOWER_MASK: u64 = (!(0 as u32)) as u64;
+                const UPPER_MASK: u64 = LOWER_MASK << 32;
+                self.next_state.hi = ((product & UPPER_MASK) >> 32) as u32;
+                self.next_state.lo = (product & LOWER_MASK) as u32;
+                true
+            }
+            ROp::DIVU => {
+                let first = self.curr_state.regs[instr.rs() as usize] as u64;
+                let second = self.curr_state.regs[instr.rt() as usize] as u64;
+                let product = first / second;
+                const LOWER_MASK: u64 = (!(0 as u32)) as u64;
+                const UPPER_MASK: u64 = LOWER_MASK << 32;
+                self.next_state.hi = ((product & UPPER_MASK) >> 32) as u32;
+                self.next_state.lo = (product & LOWER_MASK) as u32;
+                true
+            }
+            ROp::MFHI => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.hi;
+                true
+            }
+            ROp::MFLO => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.lo;
+                true
+            }
+            ROp::MTHI => {
+                self.next_state.hi = self.curr_state.regs[instr.rs() as usize];
+                true
+            }
+            ROp::MTLO => {
+                self.next_state.lo = self.curr_state.regs[instr.rs() as usize];
+                true
+            }
+            ROp::SYSCALL => {
+                if self.curr_state.regs[instr.rd() as usize] == 0xA {
+                    self.run_bit = false;
+                }
                 true
             }
         }
