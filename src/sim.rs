@@ -332,7 +332,7 @@ impl MipsComputer {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
                 let new_addr = self.curr_state.pc as i32 + ext_off;
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
-                self.next_state.regs[31] = self.curr_state.pc + 4;
+                self.curr_state.regs[31] = self.curr_state.pc + 4;
                 if val < 0 {
                     self.next_state.pc = new_addr as u32;
                 }
@@ -342,7 +342,7 @@ impl MipsComputer {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
                 let new_addr = self.curr_state.pc as i32 + ext_off;
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
-                self.next_state.regs[31] = self.curr_state.pc + 4;
+                self.curr_state.regs[31] = self.curr_state.pc + 4;
                 if val >= 0 {
                     self.next_state.pc = new_addr as u32;
                 }
@@ -472,7 +472,91 @@ impl MipsComputer {
     }
 
     fn process_rtype_instruction(&mut self, instr: &RType) -> bool {
-        true
+        match instr.op() {
+            ROp::SLL => {
+                self.next_state.regs[instr.rd() as usize] =
+                    self.curr_state.regs[instr.rt() as usize] << instr.rs();
+                true
+            }
+            ROp::SRL => {
+                self.next_state.regs[instr.rd() as usize] =
+                    self.curr_state.regs[instr.rt() as usize] >> instr.rs();
+                true
+            }
+            ROp::SRA => {
+                self.next_state.regs[instr.rd() as usize] =
+                    ((self.curr_state.regs[instr.rt() as usize] as i32) >> instr.rs()) as u32;
+                true
+            }
+            ROp::SLLV => {
+                const MASK: u32 = 0x1F;
+                let shift = self.curr_state.regs[instr.rs() as usize] & MASK;
+                self.next_state.regs[instr.rd() as usize] =
+                    self.curr_state.regs[instr.rt() as usize] << shift;
+                true
+            }
+            ROp::SRLV => {
+                const MASK: u32 = 0x1F;
+                let shift = self.curr_state.regs[instr.rs() as usize] & MASK;
+                self.next_state.regs[instr.rd() as usize] =
+                    self.curr_state.regs[instr.rt() as usize] >> shift;
+                true
+            }
+            ROp::SRAV => {
+                const MASK: u32 = 0x1F;
+                let shift = self.curr_state.regs[instr.rs() as usize] & MASK;
+                self.next_state.regs[instr.rd() as usize] =
+                    ((self.curr_state.regs[instr.rt() as usize] as i32) >> shift) as u32;
+                true
+            }
+            ROp::JR => {
+                self.next_state.pc = self.curr_state.regs[instr.rs() as usize];
+                false
+            }
+            ROp::JALR => {
+                self.next_state.pc = self.curr_state.regs[instr.rs() as usize];
+                self.curr_state.regs[instr.rd() as usize] = self.curr_state.pc + 4;
+                false
+            }
+            ROp::ADD | ROp::ADDU => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.regs
+                    [instr.rs() as usize]
+                    + self.curr_state.regs[instr.rt() as usize];
+                true
+            }
+            ROp::SUB | ROp::SUBU => {
+                let first = self.curr_state.regs[instr.rs() as usize] as i32;
+                let second = self.curr_state.regs[instr.rt() as usize] as i32;
+                self.next_state.regs[instr.rd() as usize] = (first - second) as u32;
+                true
+            }
+            ROp::AND => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.regs
+                    [instr.rs() as usize]
+                    & self.curr_state.regs[instr.rt() as usize];
+                true
+            }
+            ROp::OR => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.regs
+                    [instr.rs() as usize]
+                    | self.curr_state.regs[instr.rt() as usize];
+                true
+            }
+            ROp::XOR => {
+                self.next_state.regs[instr.rd() as usize] = self.curr_state.regs
+                    [instr.rs() as usize]
+                    ^ self.curr_state.regs[instr.rt() as usize];
+                true
+            }
+            ROp::NOR => {
+                const MASK: u32 = 0xFFFFFFFF;
+                self.next_state.regs[instr.rd() as usize] = (self.curr_state.regs
+                    [instr.rs() as usize]
+                    | self.curr_state.regs[instr.rt() as usize])
+                    ^ MASK;
+                true
+            }
+        }
     }
 
     pub fn cycle(&mut self) {
@@ -580,6 +664,6 @@ impl MipsComputer {
 }
 
 fn sign_extend32(data: u32, size: u32) -> i32 {
-    assert!(size >= 0 && size <= 32);
+    assert!(size <= 32);
     ((data << (32 - size)) as i32) >> (32 - size)
 }
