@@ -356,7 +356,6 @@ impl MipsComputer {
                 }
                 true
             }
-
             IOp::ADDI | IOp::ADDIU => {
                 let signed_imm = sign_extend32(instr.imm(), 16);
                 self.next_state.regs[instr.rt() as usize] =
@@ -526,16 +525,29 @@ impl MipsComputer {
                 self.curr_state.regs[instr.rd() as usize] = self.curr_state.pc + 4;
                 false
             }
-            ROp::ADD | ROp::ADDU => {
+            ROp::ADD => {
+                self.next_state.regs[instr.rd() as usize] =
+                    (self.curr_state.regs[instr.rs() as usize] as i32
+                        + self.curr_state.regs[instr.rt() as usize] as i32)
+                        as u32;
+                true
+            }
+            ROp::ADDU => {
                 self.next_state.regs[instr.rd() as usize] = self.curr_state.regs
                     [instr.rs() as usize]
                     + self.curr_state.regs[instr.rt() as usize];
                 true
             }
-            ROp::SUB | ROp::SUBU => {
+            ROp::SUB => {
                 let first = self.curr_state.regs[instr.rs() as usize] as i32;
                 let second = self.curr_state.regs[instr.rt() as usize] as i32;
                 self.next_state.regs[instr.rd() as usize] = (first - second) as u32;
+                true
+            }
+            ROp::SUBU => {
+                let first = self.curr_state.regs[instr.rs() as usize];
+                let second = self.curr_state.regs[instr.rt() as usize];
+                self.next_state.regs[instr.rd() as usize] = first - second;
                 true
             }
             ROp::AND => {
