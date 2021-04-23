@@ -668,6 +668,10 @@ impl MipsComputer {
         }
     }
 
+    pub fn step(&mut self) {
+        self.run(1);
+    }
+
     pub fn go(&mut self) {
         if !self.run_bit {
             println!("Can't simulate, Simulator halted\n");

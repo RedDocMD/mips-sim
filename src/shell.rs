@@ -9,6 +9,7 @@ fn help() {
     print!("----------------MIPS ISIM Help------------------------\n");
     print!("go                    - run program to completion     \n");
     print!("run n                 - execute program for n instrs  \n");
+    print!("step                  - execute program for 1 instr   \n");
     print!("mdump low high        - dump memory from low to high  \n");
     print!("rdump                 - dump the register & bus value \n");
     print!("input reg_num reg_val - set GPR reg_num to reg_val    \n");
@@ -65,6 +66,7 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
             exit(0);
         }
         "rdump" => comp.rdump(dump_file)?,
+        "step" => comp.step(),
         "run" => {
             if parts.len() < 2 {
                 return Err(io::Error::new(
