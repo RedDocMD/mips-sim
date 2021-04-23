@@ -243,7 +243,7 @@ fn parse_immediate_instr_and_op(instr: u32) -> IType {
         0x1 => IOp::BGEZ,
         0x20 => IOp::BLTZAL,
         0x21 => IOp::BGEZAL,
-        _ => panic!("Uknown branch instruction for REGIMM"),
+        _ => panic!("Uknown branch instruction for REGIMM => {:#08b}", rt),
     };
     IType {
         rs,

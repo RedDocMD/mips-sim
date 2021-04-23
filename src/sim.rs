@@ -402,7 +402,7 @@ impl MipsComputer {
             }
             IOp::LB => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let byte = self
                     .mem_read_8(address as usize)
                     .expect("Cannot read from invalid address");
@@ -411,7 +411,7 @@ impl MipsComputer {
             }
             IOp::LH => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let halfword = self
                     .mem_read_16(address as usize)
                     .expect("Cannot read from invalid address");
@@ -421,7 +421,7 @@ impl MipsComputer {
             }
             IOp::LW => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let word = self
                     .mem_read_32(address as usize)
                     .expect("Cannot read from invalid address");
@@ -430,7 +430,7 @@ impl MipsComputer {
             }
             IOp::LBU => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let byte = self
                     .mem_read_8(address as usize)
                     .expect("Cannot read from invalid address");
@@ -439,7 +439,7 @@ impl MipsComputer {
             }
             IOp::LHU => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let halfword = self
                     .mem_read_16(address as usize)
                     .expect("Cannot read from invalid address");
@@ -448,7 +448,7 @@ impl MipsComputer {
             }
             IOp::SB => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 const MASK: u32 = 0xFF;
                 let written = self.mem_write_32(
                     address as usize,
@@ -459,7 +459,7 @@ impl MipsComputer {
             }
             IOp::SH => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 const MASK: u32 = 0xFFFF;
                 let written = self.mem_write_32(
                     address as usize,
@@ -470,7 +470,7 @@ impl MipsComputer {
             }
             IOp::SW => {
                 let offset = sign_extend32(instr.imm(), 16);
-                let address = instr.rs() as i32 + offset;
+                let address = self.curr_state.regs[instr.rs() as usize] as i32 + offset;
                 let written =
                     self.mem_write_32(address as usize, self.curr_state.regs[instr.rt() as usize]);
                 assert!(written);
