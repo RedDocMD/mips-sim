@@ -66,7 +66,7 @@ pub fn prompt(comp: &mut MipsComputer, dump_file: &mut File) -> io::Result<()> {
         }
         "rdump" => comp.rdump(dump_file)?,
         "run" => {
-            if parts.len() < 3 {
+            if parts.len() < 2 {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "run requires 1 param",

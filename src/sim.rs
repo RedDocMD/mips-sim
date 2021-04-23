@@ -279,8 +279,9 @@ impl MipsComputer {
                     == self.curr_state.regs[instr.rt() as usize]
                 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BNE => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -289,8 +290,9 @@ impl MipsComputer {
                     != self.curr_state.regs[instr.rt() as usize]
                 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BLEZ => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -298,8 +300,9 @@ impl MipsComputer {
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
                 if val <= 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BGEZ => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -307,8 +310,9 @@ impl MipsComputer {
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
                 if val >= 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BGTZ => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -316,8 +320,9 @@ impl MipsComputer {
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
                 if val > 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BLTZ => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -325,8 +330,9 @@ impl MipsComputer {
                 let val = self.curr_state.regs[instr.rs() as usize] as i32;
                 if val < 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BLTZAL => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -335,8 +341,9 @@ impl MipsComputer {
                 self.curr_state.regs[31] = self.curr_state.pc + 4;
                 if val < 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
             IOp::BGEZAL => {
                 let ext_off = sign_extend32(instr.imm() << 2, 18);
@@ -345,8 +352,9 @@ impl MipsComputer {
                 self.curr_state.regs[31] = self.curr_state.pc + 4;
                 if val >= 0 {
                     self.next_state.pc = new_addr as u32;
+                    return false;
                 }
-                false
+                true
             }
 
             IOp::ADDI | IOp::ADDIU => {
@@ -475,17 +483,17 @@ impl MipsComputer {
         match instr.op() {
             ROp::SLL => {
                 self.next_state.regs[instr.rd() as usize] =
-                    self.curr_state.regs[instr.rt() as usize] << instr.rs();
+                    self.curr_state.regs[instr.rt() as usize] << instr.shamt();
                 true
             }
             ROp::SRL => {
                 self.next_state.regs[instr.rd() as usize] =
-                    self.curr_state.regs[instr.rt() as usize] >> instr.rs();
+                    self.curr_state.regs[instr.rt() as usize] >> instr.shamt();
                 true
             }
             ROp::SRA => {
                 self.next_state.regs[instr.rd() as usize] =
-                    ((self.curr_state.regs[instr.rt() as usize] as i32) >> instr.rs()) as u32;
+                    ((self.curr_state.regs[instr.rt() as usize] as i32) >> instr.shamt()) as u32;
                 true
             }
             ROp::SLLV => {
